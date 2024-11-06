@@ -5,15 +5,14 @@
  */
 package wiki.moderation.bot.invites
 
-import com.kotlindiscord.kord.extensions.ExtensibleBot
-import com.kotlindiscord.kord.extensions.utils.env
-import com.kotlindiscord.kord.extensions.utils.envOrNull
 import dev.kord.common.entity.Snowflake
+import dev.kordex.core.ExtensibleBot
+import dev.kordex.core.utils.env
+import dev.kordex.core.utils.envOfOrNull
+import dev.kordex.core.utils.envOrNull
 
-val GUILD_ID = Snowflake(
-	envOrNull("GUILD_ID")
-		?: "1131360407727128576"
-)
+val GUILD_ID = envOfOrNull<Snowflake>("GUILD_ID")
+	?: Snowflake("1131360407727128576")
 
 private val TOKEN = env("TOKEN")   // Get the bot' token from the env vars or a .env file
 

@@ -1,39 +1,26 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import dev.kordex.gradle.plugins.docker.file.*
+import dev.kordex.gradle.plugins.kordex.DataCollection
 
 plugins {
-	application
-
 	kotlin("jvm")
 	kotlin("plugin.serialization")
 
 	id("com.github.johnrengelman.shadow")
-	id("dev.yumi.gradle.licenser")
 	id("io.gitlab.arturbosch.detekt")
+
+	id("dev.kordex.gradle.docker")
+	id("dev.kordex.gradle.kordex")
+
+	id("dev.yumi.gradle.licenser")
 	id("io.sentry.jvm.gradle")
 }
 
 group = "wiki.moderation"
 version = "1.0-SNAPSHOT"
 
-repositories {
-	google()
-	mavenCentral()
-
-	maven {
-		name = "Sonatype Snapshots (Legacy)"
-		url = uri("https://oss.sonatype.org/content/repositories/snapshots")
-	}
-
-	maven {
-		name = "Sonatype Snapshots"
-		url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots")
-	}
-}
-
 dependencies {
 	detektPlugins(libs.detekt)
 
-	implementation(libs.kord.extensions)
 	implementation(libs.kotlin.stdlib)
 	implementation(libs.kx.ser)
 
@@ -45,29 +32,20 @@ dependencies {
 	implementation(libs.logging)
 }
 
-application {
-	mainClass.set("wiki.moderation.bot.invites.AppKt")
-}
+kordEx {
+	kordExVersion = "2.3.1-SNAPSHOT"
 
-tasks.withType<KotlinCompile> {
-	// Current LTS version of Java
-	kotlinOptions.jvmTarget = "17"
+	bot {
+		// See https://docs.kordex.dev/data-collection.html
+		dataCollection(DataCollection.Standard)
 
-	kotlinOptions.freeCompilerArgs += "-opt-in=kotlin.RequiresOptIn"
-}
-
-tasks.jar {
-	manifest {
-		attributes(
-			"Main-Class" to "wiki.moderation.bot.invites.AppKt"
-		)
+		mainClass = "wiki.moderation.bot.invites.AppKt"
 	}
-}
 
-java {
-	// Current LTS version of Java
-	sourceCompatibility = JavaVersion.VERSION_17
-	targetCompatibility = JavaVersion.VERSION_17
+	i18n {
+		classPackage = "wiki.moderation.bot.i18n"
+		translationBundle = "cmc.strings"
+	}
 }
 
 detekt {
@@ -77,9 +55,47 @@ detekt {
 }
 
 license {
-	rule(
-		file("codeformat/HEADER")
-	)
+	rule(rootProject.file("codeformat/HEADER"))
+
+	exclude("build/**")
+}
+
+docker {
+	// Create the Dockerfile in the root folder.
+	file(rootProject.file("Dockerfile"))
+
+	commands {
+		// Each function (aside from comment/emptyLine) corresponds to a Dockerfile instruction.
+		// See: https://docs.docker.com/reference/dockerfile/
+
+		from("openjdk:21-jdk-slim")
+
+		emptyLine()
+
+		runShell("mkdir -p /bot/plugins")
+		runShell("mkdir -p /bot/data")
+
+		emptyLine()
+
+		copy("build/libs/$name-*-all.jar", "/bot/bot.jar")
+
+		emptyLine()
+
+		// Add volumes for locations that you need to persist. This is important!
+		volume("/bot/data")  // Storage for data files
+		volume("/bot/plugins")  // Plugin ZIP/JAR location
+
+		emptyLine()
+
+		workdir("/bot")
+
+		emptyLine()
+
+		entryPointExec(
+			"java", "-Xms2G", "-Xmx2G",
+			"-jar", "/bot/bot.jar"
+		)
+	}
 }
 
 if (System.getenv().containsKey("SENTRY_AUTH_TOKEN")) {

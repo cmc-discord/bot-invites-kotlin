@@ -1,11 +1,16 @@
-FROM openjdk:17-jdk-slim
+# escape=\
+# syntax=docker/dockerfile:1
 
-COPY build/libs/*-all.jar /usr/local/lib/bot.jar
+FROM openjdk:21-jdk-slim
 
-RUN mkdir /bot
-RUN mkdir /bot/plugins
-RUN mkdir /bot/data
+RUN mkdir -p /bot/plugins
+RUN mkdir -p /bot/data
+
+COPY [ "build/libs/bot-invites-*-all.jar", "/bot/bot.jar" ]
+
+VOLUME [ "/bot/data" ]
+VOLUME [ "/bot/plugins" ]
 
 WORKDIR /bot
 
-ENTRYPOINT ["java", "-Xms512M", "-Xmx512M", "-jar", "/usr/local/lib/bot.jar"]
+ENTRYPOINT [ "java", "-Xms2G", "-Xmx2G", "-jar", "/bot/bot.jar" ]
