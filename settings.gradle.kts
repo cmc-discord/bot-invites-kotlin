@@ -11,7 +11,7 @@ pluginManagement {
 		id("com.github.jakemarsden.git-hooks") version "0.0.2"
 		id("com.github.johnrengelman.shadow") version "8.1.1"
 
-		id("dev.yumi.gradle.licenser") version "1.0.+"
+		id("dev.yumi.gradle.licenser") version "2.0.+"
 	}
 }
 
