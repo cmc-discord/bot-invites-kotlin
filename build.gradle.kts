@@ -43,7 +43,7 @@ kordEx {
 	}
 
 	i18n {
-		classPackage = "wiki.moderation.bot.i18n"
+		classPackage = "wiki.moderation.bot.invites"
 		translationBundle = "cmc.strings"
 	}
 }

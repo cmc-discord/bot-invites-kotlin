@@ -14,7 +14,7 @@ import dev.kordex.core.utils.envOrNull
 val GUILD_ID = envOfOrNull<Snowflake>("GUILD_ID")
 	?: Snowflake("1131360407727128576")
 
-private val TOKEN = env("TOKEN")   // Get the bot' token from the env vars or a .env file
+private val TOKEN = env("TOKEN")   // Get the bot's token from the env vars or a .env file
 
 suspend fun main() {
 	val bot = ExtensibleBot(TOKEN) {
