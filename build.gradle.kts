@@ -22,7 +22,10 @@ dependencies {
 	detektPlugins(libs.detekt)
 
 	implementation(libs.kotlin.stdlib)
+	implementation(libs.kx.dt)
 	implementation(libs.kx.ser)
+
+	implementation(libs.bundles.database)
 
 	// Logging dependencies
 	implementation(libs.groovy)
