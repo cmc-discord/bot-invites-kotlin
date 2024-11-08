@@ -8,10 +8,13 @@ package wiki.moderation.bot.invites
 import dev.kordex.core.ExtensibleBot
 import dev.kordex.core.utils.env
 import dev.kordex.core.utils.envOrNull
+import wiki.moderation.bot.invites.db.Database
 
 private val TOKEN = env("TOKEN")
 
 suspend fun main() {
+	Database.db  // Instantiates the object, running migrations, etc.
+
 	val bot = ExtensibleBot(TOKEN) {
 		applicationCommands {
 			defaultGuild(GUILD_ID)

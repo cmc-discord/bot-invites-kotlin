@@ -9,12 +9,32 @@ services:
 
     environment:
       - "ADAPTER_MONGODB_URI=mongodb://${DB_USERNAME}:${DB_PASSWORD}@cmc-invites-bot-db/"
+      -
+      - "DB_PASSWORD=${DB_PASSWORD}"
+      - "DB_USER=${DB_USERNAME}"
+      - "DB_URL=postgresql://cmc-invites-bot-postgres:5432/cmc-data"
 
       - TOKEN
+     # - SENTRY_DSN (For production deployments)
 
-  cmc-invites-bot-db:
-    image: mongo
-    container_name: cmc-invites-bot-db
+  cmc-invites-bot-postgres:
+    image: postgres:17
+    container_name: cmc-invites-bot-postgres
+
+    restart: always
+
+    environment:
+      POSTGRES_DB: cmc-data
+      POSTGRES_USER: "${DB_USERNAME}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD}"
+
+    volumes:
+      - cmc-invites-bot-postgres:/var/lib/postgresql/data
+
+
+  cmc-invites-bot-mongodb:
+    image: mongo:8
+    container_name: cmc-invites-bot-mongodb
 
     restart: always
 
@@ -23,4 +43,4 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: "${DB_PASSWORD}"
 
     volumes:
-      - cmc-invites-bot-db:/data/db
+      - cmc-invites-bot-mongodb:/data/mongodb
