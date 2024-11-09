@@ -16,17 +16,17 @@ import wiki.moderation.bot.invites.db.tables.UserTable
 import java.util.UUID
 
 @Serializable
-@Suppress("DataClassContainsFunctions")
+@Suppress("DataClassContainsFunctions", "DataClassShouldBeImmutable")
 data class UserEntity(
 	val id: ULong,
 
 	@Serializable(with = KXUUIDSerializer::class)
-	val inviteCode: UUID? = null,
+	var inviteCode: UUID? = null,
 
-	val lastJoined: LocalDateTime,
-	val lastSeen: LocalDateTime,
+	var lastJoined: LocalDateTime,
+	var lastSeen: LocalDateTime,
 
-	val codesRemaining: Int = 0,
+	var codesRemaining: Int = 0,
 ) {
 	suspend fun save() =
 		Users.upsert(this)

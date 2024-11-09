@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Get Schema" type="JetRunConfigurationType">
+    <envs>
+      <env name="SKIP_MIGRATIONS" value="true" />
+    </envs>
+    <option name="MAIN_CLASS_NAME" value="wiki.moderation.bot.invites.db.DatabaseKt" />
+    <module name="bot-invites.main" />
+    <shortenClasspath name="NONE" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

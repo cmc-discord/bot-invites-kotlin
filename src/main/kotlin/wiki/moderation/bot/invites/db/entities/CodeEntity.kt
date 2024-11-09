@@ -16,18 +16,18 @@ import wiki.moderation.bot.invites.db.tables.CodeTable
 import java.util.UUID
 
 @Serializable
-@Suppress("DataClassContainsFunctions")
+@Suppress("DataClassContainsFunctions", "DataClassShouldBeImmutable")
 data class CodeEntity(
 	@Serializable(with = KXUUIDSerializer::class)
 	val id: UUID,
 
 	val ownedBy: ULong,
-	val usedBy: ULong? = null,
+	var usedBy: ULong? = null,
 
 	val createdAt: LocalDateTime,
-	val usedAt: LocalDateTime? = null,
+	var usedAt: LocalDateTime? = null,
 
-	val used: Boolean = false,
+	var used: Boolean = false,
 ) {
 	suspend fun save() =
 		Codes.upsert(this)

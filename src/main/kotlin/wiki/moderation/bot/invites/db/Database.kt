@@ -21,6 +21,7 @@ import wiki.moderation.bot.invites.DB_PASSWORD
 import wiki.moderation.bot.invites.DB_URL
 import wiki.moderation.bot.invites.DB_USER
 import wiki.moderation.bot.invites.db.Database.db
+import wiki.moderation.bot.invites.db.tables.ApplicationTable
 import wiki.moderation.bot.invites.db.tables.CodeTable
 import wiki.moderation.bot.invites.db.tables.UserTable
 import org.jetbrains.exposed.sql.Database as ExposedDB
@@ -73,7 +74,17 @@ object Database {
 
 fun main() {
 	Database.syncTransaction {
-		println("== Statements: CodeTable ==")
+		println()
+		println("== Statements: Applications ==")
+		println()
+
+		SchemaUtils
+			.createStatements(ApplicationTable)
+			.map { "$it;" }
+			.forEach(::println)
+
+		println()
+		println("== Statements: Codes ==")
 		println()
 
 		SchemaUtils
@@ -82,7 +93,7 @@ fun main() {
 			.forEach(::println)
 
 		println()
-		println("== Statements: UserTable ==")
+		println("== Statements: Users ==")
 		println()
 
 		SchemaUtils
