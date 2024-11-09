@@ -26,7 +26,8 @@ data class ApplicationEntity(
 	@Serializable(with = KXUUIDSerializer::class)
 	var code: UUID? = null,
 	var state: ApplicationState = ApplicationState.OPEN,
-	val questions: MutableMap<QuestionCategory, MutableMap<String, String>> = mutableMapOf()
+	val questions: MutableMap<QuestionCategory, MutableMap<String, String>> = mutableMapOf(),
+	val threadId: ULong? = null,
 ) {
 	suspend fun save() =
 		Applications.upsert(this)
@@ -38,6 +39,7 @@ data class ApplicationEntity(
 			statement[code] = this@ApplicationEntity.code
 			statement[state] = this@ApplicationEntity.state
 			statement[questions] = this@ApplicationEntity.questions
+			statement[threadId] = this@ApplicationEntity.threadId
 		}
 	}
 
@@ -50,6 +52,7 @@ data class ApplicationEntity(
 					code = row[code],
 					state = row[state],
 					questions = row[questions],
+					threadId = row[threadId],
 				)
 			}
 	}

@@ -17,6 +17,7 @@ object ApplicationTable : UUIDTable("application") {
 	val applicant = ulong("applicant")
 	val code = uuid("code").nullable()
 	val state = enumerationByName<ApplicationState>("state", 20).default(ApplicationState.OPEN)
+	val threadId = ulong("thread_id").nullable()
 
 	val questions = json<MutableMap<QuestionCategory, MutableMap<String, String>>>("questions", Json)
 		.default(mutableMapOf())

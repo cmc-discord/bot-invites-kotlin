@@ -22,9 +22,9 @@ class InviteExtension : Extension() {
 		 *   - Require DMs to be open in this process? That way the bot can DM them with an ID they can use to continue
 		 *     later
 		 * - Once the application is fully submitted, details are sent to a forum channel where we can discuss and
-		 *   decide whether to approve them, or deny with a message explaining why
+		 *   decide whether to approve them, or deny, optionally with a message explaining why
 		 *   - Submitted applications can't be updated but a user can use a new code to apply again some other time.
-		 * - Successful applications
+		 * - Successful applications result in the role being applied
 		 */
 	}
 }
