@@ -4,8 +4,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-@file:Suppress("Filename")
-
 package wiki.moderation.bot.invites
 
 import dev.kord.common.entity.Snowflake

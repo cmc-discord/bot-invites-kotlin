@@ -6,6 +6,7 @@
 
 package wiki.moderation.bot.invites.db.entities
 
+import dev.kord.common.entity.Snowflake
 import dev.kordex.data.api.serializers.KXUUIDSerializer
 import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.Serializable
@@ -18,7 +19,7 @@ import java.util.UUID
 @Serializable
 @Suppress("DataClassContainsFunctions", "DataClassShouldBeImmutable")
 data class UserEntity(
-	val id: ULong,
+	val id: Snowflake,
 
 	@Serializable(with = KXUUIDSerializer::class)
 	var inviteCode: UUID? = null,
@@ -33,7 +34,7 @@ data class UserEntity(
 
 	fun toStatement(statement: UpdateBuilder<*>) {
 		with(UserTable) {
-			statement[id] = this@UserEntity.id
+			statement[id] = this@UserEntity.id.value
 			statement[inviteCode] = this@UserEntity.inviteCode
 			statement[lastJoined] = this@UserEntity.lastJoined
 			statement[lastSeen] = this@UserEntity.lastSeen
@@ -45,7 +46,7 @@ data class UserEntity(
 		fun fromRow(row: ResultRow): UserEntity =
 			with(UserTable) {
 				UserEntity(
-					id = row[id].value,
+					id = Snowflake(row[id].value),
 					inviteCode = row[inviteCode],
 					lastJoined = row[lastJoined],
 					lastSeen = row[lastSeen],

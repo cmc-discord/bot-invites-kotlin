@@ -6,6 +6,7 @@
 
 package wiki.moderation.bot.invites.db.collections
 
+import dev.kord.common.entity.Snowflake
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
@@ -16,9 +17,9 @@ import wiki.moderation.bot.invites.db.entities.UserEntity
 import wiki.moderation.bot.invites.db.tables.UserTable
 
 object Users {
-	suspend fun upsert(entity: UserEntity): ULong {
+	suspend fun upsert(entity: UserEntity): Snowflake {
 		read(entity.id)
-			?: return create(entity)
+			?: return Snowflake(create(entity))
 
 		update(entity)
 
@@ -31,6 +32,9 @@ object Users {
 		}[UserTable.id].value
 	}
 
+	suspend fun read(id: Snowflake): UserEntity? =
+		read(id.value)
+
 	suspend fun read(id: ULong): UserEntity? = Database.transaction {
 		UserTable.selectAll()
 			.where { UserTable.id eq id }
@@ -39,7 +43,7 @@ object Users {
 	}
 
 	suspend fun update(entity: UserEntity): Int = Database.transaction {
-		UserTable.update({ UserTable.id eq entity.id }) {
+		UserTable.update({ UserTable.id eq entity.id.value }) {
 			entity.toStatement(it)
 		}
 	}
