@@ -38,6 +38,8 @@ dependencies {
 kordEx {
 	kordExVersion = "2.3.1-SNAPSHOT"
 
+	module("dev-unsafe")
+
 	bot {
 		// See https://docs.kordex.dev/data-collection.html
 		dataCollection(DataCollection.Standard)

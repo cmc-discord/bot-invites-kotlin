@@ -18,10 +18,6 @@ suspend fun main() {
 	Database.db  // Instantiates the object, running migrations, etc.
 
 	val bot = ExtensibleBot(TOKEN) {
-		applicationCommands {
-			defaultGuild(GUILD_ID)
-		}
-
 		extensions {
 			sentry {
 				enableIfDSN(envOrNull("SENTRY_DSN"))
