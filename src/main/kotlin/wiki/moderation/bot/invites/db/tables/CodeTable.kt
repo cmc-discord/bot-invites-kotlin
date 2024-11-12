@@ -17,4 +17,5 @@ object CodeTable : UUIDTable("code") {
 	val usedAt = datetime("used_at").nullable()
 
 	val used = bool("used").default(false)
+	val note = text("note").nullable()
 }

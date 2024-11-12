@@ -20,6 +20,9 @@ val STAFF_ROLE_ID = envOfOrNull<Snowflake>("STAFF_ROLE_ID")
 val VERIFIED_ROLE_ID = envOfOrNull<Snowflake>("VERIFIED_ROLE_ID")
 	?: Snowflake("1197550474598023219")
 
+val LOGGING_CHANNEL_ID = envOfOrNull<Snowflake>("LOGGING_CHANNEL_ID")
+	?: Snowflake("1218533825282576424")
+
 val INFO_CHANNEL_ID = envOfOrNull<Snowflake>("INFO_CHANNEL_ID")
 	?: Snowflake("1305111270697074728")
 

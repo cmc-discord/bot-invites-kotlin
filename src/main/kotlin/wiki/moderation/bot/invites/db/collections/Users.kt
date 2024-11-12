@@ -7,6 +7,10 @@
 package wiki.moderation.bot.invites.db.collections
 
 import dev.kord.common.entity.Snowflake
+import dev.kord.core.behavior.UserBehavior
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
@@ -15,6 +19,7 @@ import org.jetbrains.exposed.sql.update
 import wiki.moderation.bot.invites.db.Database
 import wiki.moderation.bot.invites.db.entities.UserEntity
 import wiki.moderation.bot.invites.db.tables.UserTable
+import java.util.UUID
 
 object Users {
 	suspend fun upsert(entity: UserEntity): Snowflake {
@@ -30,6 +35,20 @@ object Users {
 		UserTable.insert {
 			entity.toStatement(it)
 		}[UserTable.id].value
+	}
+
+	suspend fun getOrCreate(user: UserBehavior, inviteCode: UUID? = null): UserEntity = Database.transaction {
+		var entity = read(user.id)
+
+		if (entity == null) {
+			val now = Clock.System.now().toLocalDateTime(TimeZone.UTC)
+
+			entity = UserEntity(user.id, inviteCode = inviteCode, lastJoined = now, lastSeen = now)
+
+			create(entity)
+		}
+
+		entity
 	}
 
 	suspend fun read(id: Snowflake): UserEntity? =

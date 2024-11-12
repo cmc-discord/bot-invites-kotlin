@@ -512,7 +512,7 @@ style:
     active: true
   DataClassContainsFunctions:
     active: true
-    conversionFunctionPrefix: 'to'
+    conversionFunctionPrefix: [ 'to' ]
   DataClassShouldBeImmutable:
     active: true
   EqualsNullCall:
@@ -547,7 +547,7 @@ style:
   FunctionOnlyReturningConstant:
     active: true
     ignoreOverridableFunction: true
-    excludedFunctions: 'describeContents'
+    excludedFunctions: [ 'describeContents' ]
     excludeAnnotatedFunction: [ 'dagger.Provides' ]
   LibraryCodeMustSpecifyReturnType:
     active: true
@@ -557,7 +557,7 @@ style:
     active: true
     maxJumpCount: 3
   MagicNumber:
-    active: true
+    active: false
     excludes: [ '**/test/**', '**/androidTest/**', '**/*.Test.kt', '**/*.Spec.kt', '**/*.Spek.kt' ]
     ignoreNumbers: [ '-1', '0', '1', '2' ]
     ignoreHashCodeFunction: true
@@ -606,7 +606,7 @@ style:
   ReturnCount:
     active: false
     max: 2
-    excludedFunctions: 'equals'
+    excludedFunctions: [ 'equals']
     excludeLabeled: false
     excludeReturnFromLambda: true
     excludeGuardClauses: false

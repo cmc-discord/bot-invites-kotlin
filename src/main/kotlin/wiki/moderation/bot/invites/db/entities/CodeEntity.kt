@@ -29,6 +29,7 @@ data class CodeEntity(
 	var usedAt: LocalDateTime? = null,
 
 	var used: Boolean = false,
+	var note: String? = null,
 ) {
 	suspend fun save() =
 		Codes.upsert(this)
@@ -41,6 +42,7 @@ data class CodeEntity(
 			statement[createdAt] = this@CodeEntity.createdAt
 			statement[usedAt] = this@CodeEntity.usedAt
 			statement[used] = this@CodeEntity.used
+			statement[note] = this@CodeEntity.note
 		}
 	}
 
@@ -54,6 +56,7 @@ data class CodeEntity(
 					createdAt = row[createdAt],
 					usedAt = row[usedAt],
 					used = row[used],
+					note = row[note],
 				)
 			}
 	}
