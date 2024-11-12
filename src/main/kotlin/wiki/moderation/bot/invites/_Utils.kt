@@ -6,10 +6,14 @@
 
 package wiki.moderation.bot.invites
 
+import dev.kord.core.behavior.UserBehavior
 import dev.kord.core.behavior.channel.createMessage
 import dev.kord.core.entity.channel.TextChannel
-import dev.kord.rest.builder.message.create.UserMessageCreateBuilder
+import dev.kord.rest.builder.message.EmbedBuilder
+import dev.kord.rest.builder.message.embed
 import dev.kordex.core.extensions.Extension
+import java.util.Locale
+import java.util.UUID
 
 private lateinit var loggingChannel: TextChannel
 
@@ -22,5 +26,37 @@ suspend fun Extension.getLoggingChannel(): TextChannel {
 	return loggingChannel
 }
 
-suspend inline fun Extension.logMessage(crossinline builder: UserMessageCreateBuilder.() -> Unit) =
-	getLoggingChannel().createMessage { builder() }
+suspend inline fun Extension.logMessage(builder: suspend EmbedBuilder.() -> Unit) =
+	getLoggingChannel().createMessage {
+		embed { builder() }
+	}
+
+fun EmbedBuilder.codeField(code: UUID, locale: Locale? = null, inline: Boolean = true) {
+	field {
+		this.inline = inline
+
+		name = Translations.Terms.code
+			.withLocale(locale)
+			.translate()
+
+		value = "`$code`"
+	}
+}
+
+suspend fun EmbedBuilder.userField(user: UserBehavior, locale: Locale? = null, inline: Boolean = true) {
+	val userObj = user.asUserOrNull()
+
+	field {
+		this.inline = inline
+
+		name = Translations.Terms.user
+			.withLocale(locale)
+			.translate()
+
+		value = if (userObj != null) {
+			"${userObj.mention} (`${userObj.tag}` / `${userObj.id}`)"
+		} else {
+			"${user.mention} (`${user.id}`)"
+		}
+	}
+}

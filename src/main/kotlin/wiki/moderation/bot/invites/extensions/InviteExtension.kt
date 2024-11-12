@@ -140,8 +140,6 @@ class InviteExtension : Extension() {
 			name = Translations.Commands.Invites.name
 			description = Translations.Commands.Invites.description
 
-			// TODO: Logging!
-
 			// note
 			ephemeralSubCommand(::InviteNoteArguments) {
 				name = Translations.Commands.Invites.Note.name
@@ -161,6 +159,19 @@ class InviteExtension : Extension() {
 						code.note = arguments.note
 
 						Codes.upsert(code)
+
+						logMessage {
+							title = Translations.Logging.Invites.NoteSet.title
+								.translate()
+
+							description = Translations.Logging.Invites.NoteSet.description
+								.translateNamed(
+									"note" to arguments.note
+								)
+
+							codeField(code.id)
+							userField(user)
+						}
 
 						respond {
 							Translations.Responses.code_note_set
@@ -200,6 +211,16 @@ class InviteExtension : Extension() {
 					val userEntity = Users.getOrCreate(user)
 
 					if (userEntity.codesRemaining < 1) {
+						logMessage {
+							title = Translations.Logging.Invites.Request.Denied.title
+								.translate()
+
+							description = Translations.Logging.Invites.Request.Denied.description
+								.translate()
+
+							userField(user)
+						}
+
 						throw DiscordRelayedException(
 							Translations.Errors.no_remaining_codes
 								.withContext(this@action)
@@ -211,6 +232,17 @@ class InviteExtension : Extension() {
 					Users.update(userEntity)
 
 					val code = Codes.create(userEntity, arguments.note)
+
+					logMessage {
+						title = Translations.Logging.Invites.Request.Granted.title
+							.translate()
+
+						description = Translations.Logging.Invites.Request.Granted.description
+							.translate()
+
+						codeField(code.id)
+						userField(user)
+					}
 
 					respond {
 						content = Translations.Responses.code_created
@@ -227,15 +259,39 @@ class InviteExtension : Extension() {
 
 				action {
 					val uuid = UUID.fromString(arguments.code)
-
 					val code = Codes.readOwned(uuid, user.id)
-						?: throw DiscordRelayedException(
+
+					if (code == null) {
+						logMessage {
+							title = Translations.Logging.Invites.Revoke.Denied.title
+								.translate()
+
+							description = Translations.Logging.Invites.Revoke.Denied.description
+								.translate()
+
+							codeField(uuid)
+							userField(user)
+						}
+
+						throw DiscordRelayedException(
 							Translations.Errors.invalid_invite_code
 								.withContext(this@action)
 								.withNamedPlaceholders("code" to arguments.code)
 						)
+					}
 
 					Codes.delete(code.id)
+
+					logMessage {
+						title = Translations.Logging.Invites.Revoke.Granted.title
+							.translate()
+
+						description = Translations.Logging.Invites.Revoke.Granted.description
+							.translate()
+
+						codeField(uuid)
+						userField(user)
+					}
 
 					respond {
 						content = Translations.Responses.code_revoked
