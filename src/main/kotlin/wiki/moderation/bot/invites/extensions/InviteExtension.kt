@@ -6,8 +6,13 @@
 
 package wiki.moderation.bot.invites.extensions
 
+import dev.kord.common.entity.ButtonStyle
+import dev.kord.core.behavior.channel.createMessage
+import dev.kord.core.builder.components.emoji
+import dev.kord.core.entity.ReactionEmoji
 import dev.kord.core.entity.channel.TextChannel
 import dev.kord.core.event.interaction.ButtonInteractionCreateEvent
+import dev.kord.rest.builder.message.actionRow
 import dev.kord.rest.builder.message.embed
 import dev.kordex.core.DiscordRelayedException
 import dev.kordex.core.checks.hasRole
@@ -19,13 +24,19 @@ import dev.kordex.core.extensions.event
 import dev.kordex.core.i18n.EMPTY_KEY
 import dev.kordex.core.i18n.withContext
 import wiki.moderation.bot.invites.*
+import wiki.moderation.bot.invites.checks.componentIdIs
 import wiki.moderation.bot.invites.checks.componentIdStartsWith
+import wiki.moderation.bot.invites.checks.modalIdIs
+import wiki.moderation.bot.invites.checks.modalIdStartsWith
 import wiki.moderation.bot.invites.db.collections.Codes
 import wiki.moderation.bot.invites.db.collections.Users
 import wiki.moderation.bot.invites.extensions.invite.InviteNoteArguments
 import wiki.moderation.bot.invites.extensions.invite.InviteRequestArguments
 import wiki.moderation.bot.invites.extensions.invite.InviteRevokeArguments
-import java.util.UUID
+import java.util.*
+
+const val BUTTON_APPLY = "invites/start-application"
+const val BUTTON_QUESTION_PREFIX = "invites/questions/"
 
 class InviteExtension : Extension() {
 	override val name: String = "cmc-invites"
@@ -124,7 +135,21 @@ class InviteExtension : Extension() {
 					}
 
 					channel.messages.collect { message -> message.delete() }
-					channel.createMessage(Resources.Text.getVerifiedChannelText())
+
+					Resources.Text.getVerifiedChannelText()
+						.forEach { block -> channel.createMessage(block) }
+
+					channel.createMessage {
+						actionRow {
+							interactionButton(ButtonStyle.Primary, BUTTON_APPLY) {
+								label = Translations.Terms.apply
+									.withContext(this@action)
+									.translate()
+
+								emoji(ReactionEmoji.Unicode("✍️"))
+							}
+						}
+					}
 
 					respond {
 						content = Translations.Responses.channel_refreshed
@@ -174,7 +199,7 @@ class InviteExtension : Extension() {
 						}
 
 						respond {
-							Translations.Responses.code_note_set
+							content = Translations.Responses.code_note_set
 								.withContext(this@action)
 								.translateNamed(
 									"code" to arguments.code,
@@ -190,7 +215,7 @@ class InviteExtension : Extension() {
 							)
 						} else {
 							respond {
-								Translations.Responses.code_note
+								content = Translations.Responses.code_note
 									.withContext(this@action)
 									.translateNamed(
 										"code" to arguments.code,
@@ -415,13 +440,43 @@ class InviteExtension : Extension() {
 		}
 
 		event<ButtonInteractionCreateEvent> {
-			check { componentIdStartsWith("invites/start-application") }
+			check { componentIdIs(BUTTON_APPLY) }
 
-			action { }
+			action {
+				// TODO: Attempt to DM, error if failure
+				// TODO: Open Modal for invite code
+			}
+		}
+
+		event<ButtonInteractionCreateEvent> {
+			check { componentIdStartsWith(BUTTON_QUESTION_PREFIX) }
+
+			action {
+				// TODO: Get question type from component ID
+				// TODO: Retrieve existing answers from DB if any
+				// TODO: Respond with Modal containing that info
+			}
 		}
 
 		event<ModalInteractionCompleteEvent> {
-			action { }
+			check { modalIdIs(BUTTON_APPLY) }
+
+			action {
+				// TODO: Check invite code exists and mark it as used
+				// TODO: If code invalid, error
+				// TODO: Create application entry in DB
+				// TODO: DM user with instructions
+			}
+		}
+
+		event<ModalInteractionCompleteEvent> {
+			check { modalIdStartsWith(BUTTON_QUESTION_PREFIX) }
+
+			action {
+				// TODO: Check question type from ID
+				// TODO: Retrieve existing DB data
+				// TODO: Overwrite provided questions in DB
+			}
 		}
 	}
 }

@@ -8,23 +8,27 @@ package wiki.moderation.bot.invites
 
 import com.ibm.icu.text.MessageFormat
 import dev.kord.common.entity.Snowflake
-import java.util.UUID
+import java.util.*
+
+const val SPLIT_TOKEN = "(( SPLIT ))"
 
 object Resources {
 	fun get(path: String) =
 		Resources::class.java.getResource(path)
 
 	object Text {
-		fun getVerifiedChannelText() =
-			Resources.get("text/get-verified.md")!!.readText()
+		fun getVerifiedChannelText(): List<String> =
+			Resources.get("/text/get-verified.md")!!.readText()
+				.split(SPLIT_TOKEN)
+				.map(String::trim)
 
 		fun getApplicationMessage(
 			application: UUID,
 			infoChannel: Snowflake,
 			sets: Int,
 			questions: Int
-		): String {
-			val text = Resources.get("text/application-message.md")!!.readText()
+		): List<String> {
+			val text = Resources.get("/text/application-message.md")!!.readText()
 
 			val format = MessageFormat(text)
 
@@ -35,7 +39,8 @@ object Resources {
 					"sets" to sets,
 					"questions" to questions
 				)
-			)
+			).split(SPLIT_TOKEN)
+				.map(String::trim)
 		}
 	}
 }

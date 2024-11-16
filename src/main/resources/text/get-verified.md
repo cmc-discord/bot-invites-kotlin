@@ -28,6 +28,8 @@ I'll save your answers every time you submit them, so feel free to stop and cont
 
 I won't submit your application until you state it is ready, so please do take your time to refine your answers as needed before submitting.
 
+(( SPLIT ))
+
 ## Notes
 
 Please bear the following in mind.
