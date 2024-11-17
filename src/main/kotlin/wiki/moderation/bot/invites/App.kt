@@ -25,6 +25,10 @@ suspend fun main() {
 
 			add(::InviteExtension)
 		}
+
+		kord {
+			stackTraceRecovery = true
+		}
 	}
 
 	bot.start()

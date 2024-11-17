@@ -9,9 +9,15 @@
 package wiki.moderation.bot.invites.extensions.invite
 
 import dev.kordex.core.components.forms.ModalForm
+import dev.kordex.core.components.forms.widgets.ParagraphTextWidget
+import dev.kordex.core.i18n.toKey
 import dev.kordex.core.i18n.types.Key
 import wiki.moderation.bot.invites.Translations
 import wiki.moderation.bot.invites.extensions.BUTTON_APPLY
+
+// NOTE: All modal inputs need to have an explicitly set ID.
+//       This means that recreating the object won't break
+//       field parsing, important in some situations!
 
 class CodeModal : ModalForm() {
 	override var title: Key =
@@ -28,5 +34,33 @@ class CodeModal : ModalForm() {
 		placeholder = Translations.Modals.Code.Input.placeholder
 
 		required = true
+	}
+}
+
+class QuestionModal(
+	override var title: Key,
+	modalId: String,
+
+	val questions: List<QuestionContainer>,
+) : ModalForm() {
+	val allQuestions: MutableList<ParagraphTextWidget> = mutableListOf()
+
+	init {
+		id = modalId
+
+		questions.forEachIndexed { index, container ->
+			allQuestions += paragraphText {
+				id = "question_$index"
+
+				minLength = 0
+				maxLength = 1000
+				required = false
+
+				label = container.title
+				placeholder = container.placeholder
+
+				initialValue = container.value?.toKey()
+			}
+		}
 	}
 }

@@ -7,11 +7,15 @@
 package wiki.moderation.bot.invites.extensions
 
 import dev.kord.common.entity.ButtonStyle
+import dev.kord.core.behavior.UserBehavior
 import dev.kord.core.behavior.channel.createMessage
+import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.modal
+import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.builder.components.emoji
 import dev.kord.core.entity.ReactionEmoji
+import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.ForumChannel
 import dev.kord.core.entity.channel.TextChannel
 import dev.kord.core.event.interaction.ButtonInteractionCreateEvent
@@ -25,8 +29,11 @@ import dev.kordex.core.extensions.Extension
 import dev.kordex.core.extensions.ephemeralSlashCommand
 import dev.kordex.core.extensions.event
 import dev.kordex.core.i18n.EMPTY_KEY
+import dev.kordex.core.i18n.types.Key
 import dev.kordex.core.i18n.withContext
+import dev.kordex.core.utils.getJumpUrl
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -39,6 +46,8 @@ import wiki.moderation.bot.invites.db.collections.Applications
 import wiki.moderation.bot.invites.db.collections.Codes
 import wiki.moderation.bot.invites.db.collections.Users
 import wiki.moderation.bot.invites.db.entities.ApplicationEntity
+import wiki.moderation.bot.invites.db.types.ApplicationState
+import wiki.moderation.bot.invites.db.types.QuestionCategory
 import wiki.moderation.bot.invites.extensions.invite.*
 import java.util.*
 
@@ -51,22 +60,10 @@ class InviteExtension : Extension() {
 
 	private val logger = KotlinLogging.logger { }
 
-	override suspend fun setup() {
-		/** TODO: Implementation Details
-		 * OK, let's think about this implementation.
-		 *
-		 * - User joins the server, maybe chats in the public channels for a whiile
-		 * - User obtains an invite code from someone with the Verified role (1197550474598023219)
-		 * - User clicks on an "Apply" button and is presented with a number of options they can use to record their
-		 *   application details (OK, that needs to be in the DB)
-		 *   - Require DMs to be open in this process? That way the bot can DM them with an ID they can use to continue
-		 *     later
-		 * - Once the application is fully submitted, details are sent to a forum channel where we can discuss and
-		 *   decide whether to approve them, or deny, optionally with a message explaining why
-		 *   - Submitted applications can't be updated but a user can use a new code to apply again some other time.
-		 * - Successful applications result in the role being applied
-		 */
+	suspend fun UserBehavior.isVerified(): Boolean =
+		asMember(GUILD_ID).roleIds.contains(VERIFIED_ROLE_ID)
 
+	override suspend fun setup() {
 		// admin
 		ephemeralSlashCommand {
 			name = Translations.Commands.Admin.name
@@ -173,6 +170,13 @@ class InviteExtension : Extension() {
 		ephemeralSlashCommand {
 			name = Translations.Commands.Invites.name
 			description = Translations.Commands.Invites.description
+
+			check {
+				failIfNot(
+					Translations.Errors.Checks.not_verified
+						.withNamedPlaceholders("channel" to INFO_CHANNEL_ID)
+				) { event.interaction.user.isVerified() }
+			}
 
 			// note
 			ephemeralSubCommand(::InviteNoteArguments) {
@@ -452,6 +456,16 @@ class InviteExtension : Extension() {
 			check { componentIdIs(BUTTON_APPLY) }
 
 			action {
+				if (event.interaction.user.isVerified()) {
+					event.interaction.respondEphemeral {
+						content = Translations.Errors.Checks.verified
+							.withLocale(getLocale())
+							.translateNamed("channel" to INFO_CHANNEL_ID)
+					}
+
+					return@action
+				}
+
 				val existingApplication = Applications.currentByUser(event.interaction.user.id)
 
 				if (existingApplication != null) {
@@ -493,9 +507,217 @@ class InviteExtension : Extension() {
 			check { componentIdStartsWith(BUTTON_QUESTION_PREFIX) }
 
 			action {
-				// TODO: Get question type from component ID
-				// TODO: Retrieve existing answers from DB if any
-				// TODO: Respond with Modal containing that info
+				if (event.interaction.user.isVerified()) {
+					event.interaction.respondEphemeral {
+						content = Translations.Errors.Checks.verified
+							.withLocale(getLocale())
+							.translateNamed("channel" to INFO_CHANNEL_ID)
+					}
+
+					return@action
+				}
+
+				val categoryString = event.interaction.componentId.split("/").last()
+
+				val category = try {
+					QuestionCategory.valueOf(categoryString)
+				} catch (_: IllegalArgumentException) {
+					logger.debug { "Button (Question) -> Unknown question category: $categoryString" }
+
+					return@action
+				}
+
+				val application = Applications.currentByUser(event.interaction.user.id)
+
+				if (application == null) {
+					logger.debug {
+						"Button (Question) -> User ${event.interaction.user.tag} doesn't have an application open."
+					}
+
+					event.interaction.respondEphemeral {
+						content = Translations.Errors.no_open_application
+							.withLocale(getLocale())
+							.translate()
+					}
+
+					return@action
+				}
+
+				val definedQuestions = questions[category]!!
+				val savedQuestions = application.questions[category]
+					?: mutableMapOf()
+
+				val containers: MutableList<QuestionContainer> = mutableListOf()
+
+				definedQuestions.forEach { title, placeholder ->
+					containers.add(
+						QuestionContainer(
+							title, placeholder, savedQuestions[title]
+						)
+					)
+				}
+
+				val locale = getLocale()
+				val modal = QuestionModal(
+					Translations.Modals.Questions.title
+						.withNamedPlaceholders(
+							"category" to category.nameKey
+						),
+
+					"$BUTTON_QUESTION_PREFIX/$categoryString",
+					containers
+				)
+
+				event.interaction.modal(modal.translateTitle(locale), modal.id) {
+					modal.applyToBuilder(this, locale)
+				}
+			}
+		}
+
+		event<ButtonInteractionCreateEvent> {
+			check { componentIdIs(BUTTON_SUBMIT) }
+
+			action {
+				val response = event.interaction.deferEphemeralResponse()
+
+				if (event.interaction.user.isVerified()) {
+					response.respond {
+						content = Translations.Errors.Checks.verified
+							.withLocale(getLocale())
+							.translateNamed("channel" to INFO_CHANNEL_ID)
+					}
+
+					return@action
+				}
+
+				val application = Applications.currentByUser(event.interaction.user.id)
+
+				if (application == null) {
+					logger.debug {
+						"Button (Submit) -> User ${event.interaction.user.tag} doesn't have an application open."
+					}
+
+					response.respond {
+						content = Translations.Errors.no_open_application
+							.withLocale(getLocale())
+							.translate()
+					}
+
+					return@action
+				}
+
+				val dmChannel = event.interaction.user.getDmChannelOrNull()
+
+				if (dmChannel == null) {
+					logger.debug {
+						"Button (Submit) -> User ${event.interaction.user.tag} has their DMs closed."
+					}
+
+					response.respond {
+						content = Translations.Errors.dms_closed
+							.withLocale(getLocale())
+							.translate()
+					}
+
+					return@action
+				}
+
+				val missingAnswers: MutableList<Pair<QuestionCategory, Key>> = mutableListOf()
+
+				questions.forEach { category, questions ->
+					val missing = questions.keys.toSet() -
+						(application.questions[category] ?: mutableMapOf<Key, String>()).keys.toSet()
+
+					missing.forEach { key ->
+						missingAnswers.add(Pair(category, key))
+					}
+				}
+
+				application.questions.forEach { category, questions ->
+					val missing = questions.filter { (_, value) ->
+						value.trim().isEmpty()
+					}
+
+					if (questions.values.any { string -> string.trim().isEmpty() }) {
+						missing.keys.forEach { key ->
+							missingAnswers.add(Pair(category, key))
+						}
+					}
+				}
+
+				val locale = getLocale()
+
+				if (missingAnswers.isNotEmpty()) {
+					response.respond {
+						content = Translations.Errors.AnswersMissing.block
+							.withLocale(locale)
+							.translateNamed(
+								"text" to buildString {
+									missingAnswers.groupBy { pair -> pair.first }.forEach { (category, questions) ->
+										appendLine(
+											Translations.Errors.AnswersMissing.category
+												.withLocale(locale)
+												.translateNamed("category" to category.nameKey)
+										)
+
+										questions.forEach { (_, question) ->
+											appendLine(
+												Translations.Errors.AnswersMissing.line
+													.withLocale(locale)
+													.translateNamed("question" to question)
+											)
+										}
+									}
+								}
+							)
+					}
+
+					return@action
+				}
+
+				val forum = bot.kordRef.getChannelOf<ForumChannel>(APPLICATION_FORUM_ID)!!
+				var thread = forum.activeThreads.firstOrNull { thread -> thread.id == application.threadId }
+
+				if (thread == null) {
+					thread = forum.openThread(event.interaction.user, application.code!!)
+				}
+
+				val firstMessage = thread.getMessage(thread.id)
+
+				firstMessage.edit {
+					application.questions.forEach { category, questions ->
+						embed {
+							title = category.nameKey.translate()
+
+							description = buildString {
+								questions.forEach { (title, value) ->
+									appendLine("### ${title.translate()}")
+									appendLine(value)
+									appendLine()
+								}
+							}
+						}
+					}
+				}
+
+				thread.createMessage {
+					content = Translations.Threads.Application.Notification.submitted
+						.translateNamed(
+							"user" to event.interaction.user.mention,
+							"url" to firstMessage.getJumpUrl()
+						)
+				}
+
+				application.state = ApplicationState.SUBMITTED
+				application.save()
+
+				response.delete()
+
+				event.interaction.user.getDmChannelOrNull()?.createMessage {
+					content = Translations.Responses.Application.submitted
+						.withLocale(locale)
+						.translate()
+				}
 			}
 		}
 
@@ -503,6 +725,16 @@ class InviteExtension : Extension() {
 			check { modalIdIs(BUTTON_APPLY) }
 
 			action {
+				if (event.interaction.user.isVerified()) {
+					event.interaction.respondEphemeral {
+						content = Translations.Errors.Checks.verified
+							.withLocale(getLocale())
+							.translateNamed("channel" to INFO_CHANNEL_ID)
+					}
+
+					return@action
+				}
+
 				val response = event.interaction.deferEphemeralResponse()
 				val dmChannel = event.interaction.user.getDmChannelOrNull()
 
@@ -612,19 +844,7 @@ class InviteExtension : Extension() {
 					return@action
 				}
 
-				val thread = forum.startPublicThread(
-					Translations.Threads.Application.name
-						.translateNamed("user" to event.interaction.user.tag)
-				) {
-					message {
-						content = Translations.Threads.Application.Message.new
-							.translateNamed(
-								"user" to event.interaction.user.mention,
-								"user_id" to event.interaction.user.id,
-								"code" to code,
-							)
-					}
-				}
+				val thread = forum.openThread(event.interaction.user, code)
 
 				val application = ApplicationEntity(
 					applicant = event.interaction.user.id,
@@ -694,10 +914,108 @@ class InviteExtension : Extension() {
 			check { modalIdStartsWith(BUTTON_QUESTION_PREFIX) }
 
 			action {
-				// TODO: Check question type from ID
-				// TODO: Retrieve existing DB data
-				// TODO: Overwrite provided questions in DB
+				val response = event.interaction.deferEphemeralResponse()
+
+				if (event.interaction.user.isVerified()) {
+					response.respond {
+						content = Translations.Errors.Checks.verified
+							.withLocale(getLocale())
+							.translateNamed("channel" to INFO_CHANNEL_ID)
+					}
+
+					return@action
+				}
+
+				val categoryString = event.interaction.modalId.split("/").last()
+
+				val category = try {
+					QuestionCategory.valueOf(categoryString)
+				} catch (_: IllegalArgumentException) {
+					logger.debug { "Modal (Question) -> Unknown question category: $categoryString" }
+
+					return@action
+				}
+
+				val application = Applications.currentByUser(event.interaction.user.id)
+
+				if (application == null) {
+					logger.debug {
+						"Button (Question) -> User ${event.interaction.user.tag} doesn't have an application open."
+					}
+
+					response.respond {
+						content = Translations.Errors.no_open_application
+							.withLocale(getLocale())
+							.translate()
+					}
+
+					return@action
+				}
+
+				val definedQuestions = questions[category]!!
+				val questionTitles = definedQuestions.keys.toList()
+				val savedQuestions = application.questions[category]
+					?: mutableMapOf()
+
+				val containers: MutableList<QuestionContainer> = mutableListOf()
+
+				definedQuestions.forEach { title, placeholder ->
+					containers.add(
+						QuestionContainer(
+							title, placeholder, savedQuestions[title]
+						)
+					)
+				}
+
+				val locale = getLocale()
+				val modal = QuestionModal(
+					Translations.Modals.Questions.title
+						.withNamedPlaceholders(
+							"category" to category.nameKey
+						),
+
+					"$BUTTON_QUESTION_PREFIX/$categoryString",
+					containers
+				)
+
+				modal.call(event)
+
+				val currentAnswers = application.questions[category]
+					?: mutableMapOf()
+
+				modal.allQuestions.forEachIndexed { index, widget ->
+					if (!widget.value.isNullOrBlank()) {
+						currentAnswers[questionTitles[index]] = widget.value!!
+					}
+				}
+
+				application.questions[category] = currentAnswers
+				application.save()
+
+				response.respond {
+					content = Translations.Responses.Application.questions_saved
+						.withLocale(locale)
+						.translate()
+				}
 			}
 		}
 	}
+
+	suspend fun ForumChannel.openThread(user: User, code: UUID) =
+		startPublicThread(
+			Translations.Threads.Application.name
+				.translateNamed("user" to user.tag)
+		) {
+			message {
+				content = Translations.Threads.Application.Message.new
+					.translateNamed(
+						"user" to user.mention,
+						"user_id" to user.id,
+						"code" to code,
+						"warning" to Translations.Threads.Application.Message.warning
+					)
+
+				// TODO: Staff buttons!
+			}
+		}
 }
