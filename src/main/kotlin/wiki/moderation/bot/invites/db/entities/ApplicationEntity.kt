@@ -30,7 +30,7 @@ data class ApplicationEntity(
 	var code: UUID? = null,
 	var state: ApplicationState = ApplicationState.OPEN,
 	val questions: MutableMap<QuestionCategory, MutableMap<Key, String>> = mutableMapOf(),
-	val threadId: Snowflake? = null,
+	var threadId: Snowflake? = null,
 ) {
 	suspend fun save() =
 		Applications.upsert(this)

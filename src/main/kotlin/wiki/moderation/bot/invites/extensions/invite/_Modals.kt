@@ -64,3 +64,16 @@ class QuestionModal(
 		}
 	}
 }
+
+class DenyMessageModal : ModalForm() {
+	override var title: Key = Translations.Modals.Deny.title
+
+	val message = paragraphText {
+		label = Translations.Modals.Deny.input
+		placeholder = Translations.Modals.Deny.placeholder
+
+		required = true
+		minLength = 1
+		maxLength = 1000
+	}
+}

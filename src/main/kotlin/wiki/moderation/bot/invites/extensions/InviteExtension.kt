@@ -6,25 +6,37 @@
 
 package wiki.moderation.bot.invites.extensions
 
+import dev.kord.common.annotation.KordExperimental
+import dev.kord.common.annotation.KordUnsafe
 import dev.kord.common.entity.ButtonStyle
 import dev.kord.core.behavior.UserBehavior
+import dev.kord.core.behavior.channel.asChannelOf
 import dev.kord.core.behavior.channel.createMessage
+import dev.kord.core.behavior.channel.threads.edit
 import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.modal
 import dev.kord.core.behavior.interaction.respondEphemeral
+import dev.kord.core.behavior.interaction.response.edit
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.builder.components.emoji
 import dev.kord.core.entity.ReactionEmoji
 import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.ForumChannel
 import dev.kord.core.entity.channel.TextChannel
+import dev.kord.core.entity.channel.thread.TextChannelThread
 import dev.kord.core.event.interaction.ButtonInteractionCreateEvent
 import dev.kord.core.event.interaction.ModalSubmitInteractionCreateEvent
+import dev.kord.rest.builder.channel.thread.applyTag
 import dev.kord.rest.builder.message.actionRow
 import dev.kord.rest.builder.message.embed
 import dev.kordex.core.DiscordRelayedException
 import dev.kordex.core.checks.hasRole
 import dev.kordex.core.commands.application.slash.ephemeralSubCommand
+import dev.kordex.core.components.ComponentContainer
+import dev.kordex.core.components.buttons.EphemeralInteractionButton
+import dev.kordex.core.components.components
+import dev.kordex.core.components.ephemeralButton
+import dev.kordex.core.components.types.emoji
 import dev.kordex.core.extensions.Extension
 import dev.kordex.core.extensions.ephemeralSlashCommand
 import dev.kordex.core.extensions.event
@@ -51,6 +63,7 @@ import wiki.moderation.bot.invites.db.types.QuestionCategory
 import wiki.moderation.bot.invites.extensions.invite.*
 import java.util.*
 
+const val BUTTON_ACTION_PREFIX = "invites/action-application/"
 const val BUTTON_APPLY = "invites/start-application"
 const val BUTTON_QUESTION_PREFIX = "invites/questions/"
 const val BUTTON_SUBMIT = "invites/submit-application"
@@ -452,6 +465,7 @@ class InviteExtension : Extension() {
 			}
 		}
 
+		// Apply button
 		event<ButtonInteractionCreateEvent> {
 			check { componentIdIs(BUTTON_APPLY) }
 
@@ -503,6 +517,7 @@ class InviteExtension : Extension() {
 			}
 		}
 
+		// Question category button
 		event<ButtonInteractionCreateEvent> {
 			check { componentIdStartsWith(BUTTON_QUESTION_PREFIX) }
 
@@ -574,6 +589,7 @@ class InviteExtension : Extension() {
 			}
 		}
 
+		// Submit button
 		event<ButtonInteractionCreateEvent> {
 			check { componentIdIs(BUTTON_SUBMIT) }
 
@@ -679,7 +695,7 @@ class InviteExtension : Extension() {
 				var thread = forum.activeThreads.firstOrNull { thread -> thread.id == application.threadId }
 
 				if (thread == null) {
-					thread = forum.openThread(event.interaction.user, application.code!!)
+					thread = forum.openThread(event.interaction.user, application.code!!, application.id)
 				}
 
 				val firstMessage = thread.getMessage(thread.id)
@@ -721,6 +737,195 @@ class InviteExtension : Extension() {
 			}
 		}
 
+		// Staff actions button
+		@OptIn(KordUnsafe::class, KordExperimental::class)
+		event<ButtonInteractionCreateEvent> {
+			check { componentIdStartsWith(BUTTON_ACTION_PREFIX) }
+			check { hasRole(STAFF_ROLE_ID) }
+
+			action {
+				val response = event.interaction.deferEphemeralResponseUnsafe()
+				val applicationId = UUID.fromString(event.interaction.componentId.split("/").last())
+				val application = Applications.read(applicationId)
+
+				if (application == null || application.state != ApplicationState.SUBMITTED) {
+					logger.debug {
+						"Button (Action) -> Application $applicationId either doesn't exist or isn't in the " +
+							"`Submitted` state.."
+					}
+
+					response.edit {
+						content = Translations.Errors.no_submitted_application
+							.withLocale(getLocale())
+							.translate()
+					}
+
+					return@action
+				}
+
+				val locale = getLocale()
+				val thread = event.interaction.channel.asChannelOf<TextChannelThread>()
+
+				val user = bot.kordRef.unsafe.user(application.applicant)
+
+				lateinit var components: ComponentContainer
+				lateinit var refundButton: EphemeralInteractionButton<*>
+
+				response.edit {
+					content = Translations.Responses.Application.actions
+						.withLocale(locale)
+						.translate()
+
+					components = components {
+						// Approve
+						ephemeralButton(1) {
+							label = Translations.Buttons.Action.approve
+							emoji("✅")
+
+							action {
+								application.state = ApplicationState.ACCEPTED
+								application.save()
+
+								user.asMember(GUILD_ID)
+									.addRole(VERIFIED_ROLE_ID)
+
+								thread.edit {
+									archived = true
+									applyTag(ACCEPTED_TAG_ID)
+								}
+
+								val dmChannel = user.getDmChannelOrNull()
+
+								dmChannel?.createMessage {
+									content = Translations.Messages.approved
+										.translate()
+								}
+
+								respond {
+									content = Translations.Responses.Application.Actions.approved
+										.withLocale(getLocale())
+										.translate() +
+										if (dmChannel == null) {
+											"\n\n" +
+												Translations.Responses.Application.Actions.unable_to_dm
+													.withLocale(getLocale())
+													.translate()
+										} else {
+											""
+										}
+								}
+							}
+						}
+
+						// Deny
+						ephemeralButton(1) {
+							label = Translations.Buttons.Action.deny_only
+							emoji("❌")
+
+							action {
+								application.state = ApplicationState.DENIED
+								application.save()
+
+								thread.edit {
+									archived = true
+									applyTag(DENIED_TAG_ID)
+								}
+
+								val dmChannel = user.getDmChannelOrNull()
+
+								dmChannel?.createMessage {
+									content = Translations.Messages.Denied.only
+										.translate()
+								}
+
+								respond {
+									content = Translations.Responses.Application.Actions.denied
+										.withLocale(getLocale())
+										.translate() +
+										if (dmChannel == null) {
+											"\n\n" +
+												Translations.Responses.Application.Actions.unable_to_dm
+													.withLocale(getLocale())
+													.translate()
+										} else {
+											""
+										}
+								}
+							}
+						}
+
+						// Deny (With Message)
+						ephemeralButton(::DenyMessageModal, 1) {
+							label = Translations.Buttons.Action.deny_with_message
+							emoji("💬")
+
+							action { modal ->
+								modal ?: return@action
+
+								application.state = ApplicationState.DENIED
+								application.save()
+
+								thread.edit {
+									archived = true
+									applyTag(DENIED_TAG_ID)
+								}
+
+								val dmChannel = user.getDmChannelOrNull()
+
+								dmChannel?.createMessage {
+									content = Translations.Messages.Denied.with_message
+										.translateNamed(
+											"message" to modal.message.value
+										)
+								}
+
+								respond {
+									content = Translations.Responses.Application.Actions.denied
+										.withLocale(getLocale())
+										.translate() +
+										if (dmChannel == null) {
+											"\n\n" +
+												Translations.Responses.Application.Actions.unable_to_dm
+													.withLocale(getLocale())
+													.translate()
+										} else {
+											""
+										}
+								}
+							}
+						}
+
+						// Refund Code
+						refundButton = ephemeralButton(2) {
+							label = Translations.Buttons.Action.refund_code
+							emoji("⏪")
+
+							action {
+								val codeEntity = Codes.read(application.code!!)!!
+								val userEntity = Users.getOrCreate(bot.kordRef.unsafe.user(codeEntity.ownedBy))
+
+								userEntity.codesRemaining += 1
+								userEntity.save()
+
+								refundButton.disable()
+
+								response.edit {
+									with(components) { applyToMessage() }
+								}
+
+								respond {
+									content = Translations.Responses.Application.Actions.refunded
+										.withLocale(getLocale())
+										.translate()
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Code modal
 		event<ModalSubmitInteractionCreateEvent> {
 			check { modalIdIs(BUTTON_APPLY) }
 
@@ -844,13 +1049,14 @@ class InviteExtension : Extension() {
 					return@action
 				}
 
-				val thread = forum.openThread(event.interaction.user, code)
-
 				val application = ApplicationEntity(
 					applicant = event.interaction.user.id,
 					code = code,
-					threadId = thread.id
 				)
+
+				val thread = forum.openThread(event.interaction.user, code, application.id)
+
+				application.threadId = thread.id
 
 				codeEntity.used = true
 				codeEntity.usedBy = event.interaction.user.id
@@ -910,6 +1116,7 @@ class InviteExtension : Extension() {
 			}
 		}
 
+		// Questions modal
 		event<ModalSubmitInteractionCreateEvent> {
 			check { modalIdStartsWith(BUTTON_QUESTION_PREFIX) }
 
@@ -1001,7 +1208,7 @@ class InviteExtension : Extension() {
 		}
 	}
 
-	suspend fun ForumChannel.openThread(user: User, code: UUID) =
+	suspend fun ForumChannel.openThread(user: User, code: UUID, application: UUID) =
 		startPublicThread(
 			Translations.Threads.Application.name
 				.translateNamed("user" to user.tag)
@@ -1015,7 +1222,14 @@ class InviteExtension : Extension() {
 						"warning" to Translations.Threads.Application.Message.warning
 					)
 
-				// TODO: Staff buttons!
+				actionRow {
+					interactionButton(ButtonStyle.Primary, "$BUTTON_ACTION_PREFIX/$application") {
+						label = Translations.Terms.actions
+							.translate()
+
+						emoji(ReactionEmoji.Unicode("🗳️"))
+					}
+				}
 			}
 		}
 }
