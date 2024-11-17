@@ -16,6 +16,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
+import wiki.moderation.bot.invites.GUILD_ID
 import wiki.moderation.bot.invites.db.Database
 import wiki.moderation.bot.invites.db.entities.UserEntity
 import wiki.moderation.bot.invites.db.tables.UserTable
@@ -43,7 +44,10 @@ object Users {
 		if (entity == null) {
 			val now = Clock.System.now().toLocalDateTime(TimeZone.UTC)
 
-			entity = UserEntity(user.id, inviteCode = inviteCode, lastJoined = now, lastSeen = now)
+			val lastJoined = user.asMemberOrNull(GUILD_ID)?.joinedAt?.toLocalDateTime(TimeZone.UTC)
+				?: now
+
+			entity = UserEntity(user.id, inviteCode = inviteCode, lastJoined = lastJoined, lastSeen = now)
 
 			create(entity)
 		}

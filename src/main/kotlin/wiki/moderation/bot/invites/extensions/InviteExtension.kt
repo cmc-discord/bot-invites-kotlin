@@ -29,6 +29,7 @@ import dev.kord.core.event.interaction.ModalSubmitInteractionCreateEvent
 import dev.kord.rest.builder.channel.thread.applyTag
 import dev.kord.rest.builder.message.actionRow
 import dev.kord.rest.builder.message.embed
+import dev.kordex.core.DISCORD_BLURPLE
 import dev.kordex.core.DiscordRelayedException
 import dev.kordex.core.checks.hasRole
 import dev.kordex.core.commands.application.slash.ephemeralSubCommand
@@ -43,12 +44,13 @@ import dev.kordex.core.extensions.event
 import dev.kordex.core.i18n.EMPTY_KEY
 import dev.kordex.core.i18n.types.Key
 import dev.kordex.core.i18n.withContext
+import dev.kordex.core.time.TimestampType
+import dev.kordex.core.time.toDiscord
 import dev.kordex.core.utils.getJumpUrl
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.datetime.Clock
+import kotlinx.datetime.*
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import wiki.moderation.bot.invites.*
 import wiki.moderation.bot.invites.checks.componentIdIs
 import wiki.moderation.bot.invites.checks.componentIdStartsWith
@@ -86,8 +88,6 @@ class InviteExtension : Extension() {
 
 			check { hasRole(STAFF_ROLE_ID) }
 
-			// TODO: Invite management commands
-
 			// get-commands
 			ephemeralSubCommand {
 				name = Translations.Commands.Admin.GetCommands.name
@@ -96,6 +96,8 @@ class InviteExtension : Extension() {
 				action {
 					respond {
 						embed {
+							color = DISCORD_BLURPLE
+
 							title = Translations.Embeds.GetCommands.title
 								.withContext(this@action)
 								.translate()
@@ -118,6 +120,8 @@ class InviteExtension : Extension() {
 				action {
 					respond {
 						embed {
+							color = DISCORD_BLURPLE
+
 							title = Translations.Embeds.GetSettings.title
 								.withContext(this@action)
 								.translate()
@@ -134,6 +138,104 @@ class InviteExtension : Extension() {
 									"denied_tag" to DENIED_TAG_ID,
 								)
 						}
+					}
+				}
+			}
+
+			// give-codes
+			ephemeralSubCommand(::AdminGiveTakeCodeArguments) {
+				name = Translations.Commands.Admin.GiveCodes.name
+				description = Translations.Commands.Admin.GiveCodes.description
+
+				action {
+					if (!arguments.target.isVerified()) {
+						respond {
+							content = Translations.Errors.target_unverified
+								.withContext(this@action)
+								.translate()
+						}
+
+						return@action
+					}
+
+					val dmChannel = arguments.target.getDmChannelOrNull()
+					val userEntity = Users.getOrCreate(arguments.target)
+
+					userEntity.codesRemaining += arguments.codes
+
+					userEntity.save()
+
+					dmChannel?.createMessage {
+						content = Translations.Messages.Code.granted
+							.translateNamed(
+								"number" to arguments.codes,
+								"total" to userEntity.codesRemaining
+							)
+					}
+
+					respond {
+						content = Translations.Responses.code_granted
+							.withContext(this@action)
+							.translateNamed(
+								"number" to arguments.codes,
+								"total" to userEntity.codesRemaining
+							) +
+							if (dmChannel == null) {
+								Translations.Responses.Application.Actions.unable_to_dm
+									.withContext(this@action)
+									.translate()
+							} else {
+								""
+							}
+					}
+				}
+			}
+
+			// take-codes
+			ephemeralSubCommand(::AdminGiveTakeCodeArguments) {
+				name = Translations.Commands.Admin.TakeCodes.name
+				description = Translations.Commands.Admin.TakeCodes.description
+
+				action {
+					if (!arguments.target.isVerified()) {
+						respond {
+							content = Translations.Errors.target_unverified
+								.withContext(this@action)
+								.translate()
+						}
+
+						return@action
+					}
+
+					val dmChannel = arguments.target.getDmChannelOrNull()
+					val userEntity = Users.getOrCreate(arguments.target)
+
+					userEntity.codesRemaining -= arguments.codes
+
+					userEntity.save()
+
+					dmChannel?.createMessage {
+						content = Translations.Messages.Code.taken
+							.translateNamed(
+								"number" to arguments.codes,
+								"total" to userEntity.codesRemaining
+							)
+					}
+
+					respond {
+						content = Translations.Responses.code_taken
+							.withContext(this@action)
+							.translateNamed(
+								"number" to arguments.codes,
+								"total" to userEntity.codesRemaining
+							) +
+							if (dmChannel == null) {
+								Translations.Responses.Application.Actions.unable_to_dm
+									.withContext(this@action)
+									.translate()
+							} else {
+								""
+							}
 					}
 				}
 			}
@@ -174,6 +276,112 @@ class InviteExtension : Extension() {
 						content = Translations.Responses.channel_refreshed
 							.withContext(this@action)
 							.translateNamed("id" to INFO_CHANNEL_ID)
+					}
+				}
+			}
+
+			// show-code
+			ephemeralSubCommand(::AdminCodeLookupArguments) {
+				name = Translations.Commands.Admin.ShowCode.name
+				description = Translations.Commands.Admin.ShowCode.description
+
+				action {
+					val uuid = UUID.fromString(arguments.code)
+					val codeEntity = Codes.read(uuid)
+
+					if (codeEntity == null) {
+						respond {
+							content = Translations.Errors.invalid_invite_code
+								.withContext(this@action)
+								.translateNamed(
+									"code" to uuid
+								)
+						}
+
+						return@action
+					}
+
+					respond {
+						embed {
+							color = DISCORD_BLURPLE
+							title = "Code: $uuid"
+
+							description = buildString {
+								// TODO: Translate later, I'm tired
+
+								appendLine("- Created at: ${codeEntity.createdAt.toDiscord()}")
+								append("- Status: ")
+
+								if (codeEntity.used) {
+									appendLine("❌ Used")
+								} else {
+									appendLine("✅ Unused")
+								}
+
+								appendLine()
+								appendLine("- Owner: <@${codeEntity.ownedBy}> (`${codeEntity.ownedBy}`)")
+
+								if (codeEntity.usedAt != null) {
+									appendLine("- Used At: <@${codeEntity.usedAt!!.toDiscord()}")
+								}
+
+								if (codeEntity.usedBy != null) {
+									appendLine("- Used By: <@${codeEntity.usedBy}> (`${codeEntity.usedBy}`)")
+								}
+
+								if (codeEntity.note != null) {
+									appendLine("### User Note")
+									appendLine()
+									appendLine(">>> ${codeEntity.note}")
+								}
+							}
+						}
+					}
+				}
+			}
+
+			// show-user
+			ephemeralSubCommand(::AdminMemberLookupArguments) {
+				name = Translations.Commands.Admin.ShowUser.name
+				description = Translations.Commands.Admin.ShowUser.description
+
+				action {
+					// TODO: Translate later, I'm tired
+
+					val userEntity = Users.read(arguments.target.id)
+
+					if (userEntity == null) {
+						respond {
+							content = "❌ No stored data for ${arguments.target.mention}."
+						}
+
+						return@action
+					}
+
+					respond {
+						embed {
+							color = DISCORD_BLURPLE
+
+							title = "User: ${arguments.target.tag}"
+
+							description = buildString {
+								// TODO: Translate later, I'm tired
+
+								appendLine("- ID: `${arguments.target.id}`")
+								append("- Status: ")
+
+								if (arguments.target.roleIds.contains(VERIFIED_ROLE_ID)) {
+									appendLine("✅ Verified")
+								} else {
+									appendLine("❌ Not Verified")
+								}
+
+								appendLine()
+								appendLine("- Codes remaining: ${userEntity.codesRemaining}")
+								appendLine("- Last Join: ${userEntity.lastJoined.toDiscord()}")
+								appendLine("- Last Seen: ${userEntity.lastSeen.toDiscord()}")
+							}
+						}
 					}
 				}
 			}
@@ -370,6 +578,8 @@ class InviteExtension : Extension() {
 					editingPaginator(EMPTY_KEY, getLocale()) {
 						codes.chunked(10).map { chunk ->
 							page {
+								color = DISCORD_BLURPLE
+
 								title = Translations.Responses.UnusedCodes.title
 									.withContext(this@action)
 									.translate()
@@ -412,6 +622,8 @@ class InviteExtension : Extension() {
 					editingPaginator(EMPTY_KEY, getLocale()) {
 						codes.chunked(10).map { chunk ->
 							page {
+								color = DISCORD_BLURPLE
+
 								title = Translations.Responses.UsedCodes.title
 									.withContext(this@action)
 									.translate()
@@ -448,6 +660,8 @@ class InviteExtension : Extension() {
 
 					respond {
 						embed {
+							color = DISCORD_BLURPLE
+
 							title = Translations.Responses.User.Status.title
 								.withContext(this@action)
 								.translate()
@@ -703,6 +917,8 @@ class InviteExtension : Extension() {
 				firstMessage.edit {
 					application.questions.forEach { category, questions ->
 						embed {
+							color = DISCORD_BLURPLE
+
 							title = category.nameKey.translate()
 
 							description = buildString {
@@ -1232,4 +1448,7 @@ class InviteExtension : Extension() {
 				}
 			}
 		}
+
+	fun LocalDateTime.toDiscord() =
+		toInstant(TimeZone.UTC).toDiscord(TimestampType.LongDateTime)
 }

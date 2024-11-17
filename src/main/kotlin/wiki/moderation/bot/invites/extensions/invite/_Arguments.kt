@@ -7,14 +7,16 @@
 package wiki.moderation.bot.invites.extensions.invite
 
 import dev.kordex.core.commands.Arguments
+import dev.kordex.core.commands.converters.impl.int
+import dev.kordex.core.commands.converters.impl.member
 import dev.kordex.core.commands.converters.impl.optionalString
 import dev.kordex.core.commands.converters.impl.string
 import wiki.moderation.bot.invites.Translations
-import java.util.UUID
+import java.util.*
 
 fun Arguments.inviteCode() = string {
 	name = Translations.Arguments.InviteCode.name
-	description = Translations.Arguments.InviteCode.name
+	description = Translations.Arguments.InviteCode.description
 
 	validate {
 		try {
@@ -46,4 +48,27 @@ class InviteRequestArguments : Arguments() {
 
 class InviteRevokeArguments : Arguments() {
 	val code by inviteCode()
+}
+
+class AdminGiveTakeCodeArguments : Arguments() {
+	val target by member {
+		name = Translations.Arguments.TargetMember.name
+		description = Translations.Arguments.TargetMember.description
+	}
+
+	val codes by int {
+		name = Translations.Arguments.CodeNumber.name
+		description = Translations.Arguments.CodeNumber.description
+	}
+}
+
+class AdminCodeLookupArguments : Arguments() {
+	val code by inviteCode()
+}
+
+class AdminMemberLookupArguments : Arguments() {
+	val target by member {
+		name = Translations.Arguments.TargetMember.name
+		description = Translations.Arguments.TargetMember.description
+	}
 }
