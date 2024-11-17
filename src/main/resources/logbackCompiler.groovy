@@ -454,5 +454,7 @@ importsAcceptList = [
 	'java.lang.System.getProperty',
 	'java.lang.System.getenv',
 	'java.util.Map.getOrDefault',
+	'java.lang.Object.contains',
+	'java.util.Properties.contains',
 	'dev.kordex.core.utils._EnvironmentKt.envOrNull',
 ]

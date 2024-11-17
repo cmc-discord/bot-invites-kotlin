@@ -7,12 +7,12 @@
 import ch.qos.logback.core.joran.spi.ConsoleTarget
 import ch.qos.logback.core.ConsoleAppender
 
-def environment = System.getenv("ENVIRONMENT") ?: "production"
+def devMode = System.getProperty("devMode", "null") != "null"
 
 def defaultLevel = INFO
 def defaultTarget = ConsoleTarget.SystemErr
 
-if (environment == "dev") {
+if (devMode) {
 	defaultLevel = DEBUG
 	defaultTarget = ConsoleTarget.SystemOut
 

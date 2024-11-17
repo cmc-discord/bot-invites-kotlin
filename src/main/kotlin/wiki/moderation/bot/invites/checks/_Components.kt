@@ -7,10 +7,10 @@
 package wiki.moderation.bot.invites.checks
 
 import dev.kord.core.event.interaction.ComponentInteractionCreateEvent
+import dev.kord.core.event.interaction.ModalSubmitInteractionCreateEvent
 import dev.kordex.core.checks.failed
 import dev.kordex.core.checks.passed
 import dev.kordex.core.checks.types.CheckContext
-import dev.kordex.core.events.ModalInteractionCompleteEvent
 import io.github.oshai.kotlinlogging.KotlinLogging
 import wiki.moderation.bot.invites.Translations
 
@@ -52,7 +52,7 @@ fun <T : ComponentInteractionCreateEvent> CheckContext<T>.componentIdIs(id: Stri
 	}
 }
 
-fun CheckContext<ModalInteractionCompleteEvent>.modalIdStartsWith(prefix: String) {
+fun CheckContext<ModalSubmitInteractionCreateEvent>.modalIdStartsWith(prefix: String) {
 	if (!passed) {
 		return
 	}
@@ -71,7 +71,7 @@ fun CheckContext<ModalInteractionCompleteEvent>.modalIdStartsWith(prefix: String
 	}
 }
 
-fun CheckContext<ModalInteractionCompleteEvent>.modalIdIs(id: String) {
+fun CheckContext<ModalSubmitInteractionCreateEvent>.modalIdIs(id: String) {
 	if (!passed) {
 		return
 	}

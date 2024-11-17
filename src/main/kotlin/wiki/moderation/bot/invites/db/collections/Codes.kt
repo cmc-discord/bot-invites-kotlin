@@ -65,8 +65,7 @@ object Codes {
 		CodeTable.selectAll()
 			.where { CodeTable.id eq id }
 			.map { CodeEntity.fromRow(it) }
-			.filter(filter)
-			.singleOrNull()
+			.singleOrNull(filter)
 	}
 
 	@Suppress("UnnecessaryParentheses")  // More readable like this!
@@ -78,8 +77,7 @@ object Codes {
 		CodeTable.selectAll()
 			.where { (CodeTable.id eq id) and (CodeTable.ownedBy eq ownerId.value) }
 			.map { CodeEntity.fromRow(it) }
-			.filter(filter)
-			.singleOrNull()
+			.singleOrNull(filter)
 	}
 
 	suspend fun getForOwner(
