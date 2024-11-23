@@ -20,6 +20,9 @@ services:
     volumes:
       - cmc-invites-bot-data:/bot/data
 
+    depends_on:
+      - cmc-invites-bot-postgres
+
   cmc-invites-bot-postgres:
     image: postgres:17
     container_name: cmc-invites-bot-postgres

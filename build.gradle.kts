@@ -1,3 +1,4 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import dev.kordex.gradle.plugins.docker.file.*
 import dev.kordex.gradle.plugins.kordex.DataCollection
 
@@ -33,6 +34,10 @@ dependencies {
 	implementation(libs.logback)
 	implementation(libs.logback.groovy)
 	implementation(libs.logging)
+}
+
+tasks.withType<ShadowJar> {
+	mergeServiceFiles()
 }
 
 kordEx {
