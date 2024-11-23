@@ -213,6 +213,10 @@ class InviteExtension : Extension() {
 
 					userEntity.codesRemaining -= arguments.codes
 
+					if (userEntity.codesRemaining < 0) {
+						userEntity.codesRemaining = 0
+					}
+
 					userEntity.save()
 
 					dmChannel?.createMessage {
