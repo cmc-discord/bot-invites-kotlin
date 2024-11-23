@@ -169,7 +169,7 @@ class InviteExtension : Extension() {
 					dmChannel?.createMessage {
 						content = Translations.Messages.Code.granted
 							.translateNamed(
-								"number" to arguments.codes,
+								"codes" to arguments.codes,
 								"total" to userEntity.codesRemaining
 							)
 					}
@@ -178,7 +178,7 @@ class InviteExtension : Extension() {
 						content = Translations.Responses.code_granted
 							.withContext(this@action)
 							.translateNamed(
-								"number" to arguments.codes,
+								"codes" to arguments.codes,
 								"total" to userEntity.codesRemaining
 							) +
 							if (dmChannel == null) {
@@ -218,7 +218,7 @@ class InviteExtension : Extension() {
 					dmChannel?.createMessage {
 						content = Translations.Messages.Code.taken
 							.translateNamed(
-								"number" to arguments.codes,
+								"codes" to arguments.codes,
 								"total" to userEntity.codesRemaining
 							)
 					}
@@ -227,7 +227,7 @@ class InviteExtension : Extension() {
 						content = Translations.Responses.code_taken
 							.withContext(this@action)
 							.translateNamed(
-								"number" to arguments.codes,
+								"codes" to arguments.codes,
 								"total" to userEntity.codesRemaining
 							) +
 							if (dmChannel == null) {
