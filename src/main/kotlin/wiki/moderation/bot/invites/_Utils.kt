@@ -43,6 +43,24 @@ fun EmbedBuilder.codeField(code: UUID, locale: Locale? = null, inline: Boolean =
 	}
 }
 
+suspend fun EmbedBuilder.staffField(user: UserBehavior, locale: Locale? = null, inline: Boolean = true) {
+	val userObj = user.asUserOrNull()
+
+	field {
+		this.inline = inline
+
+		name = Translations.Terms.staffer
+			.withLocale(locale)
+			.translate()
+
+		value = if (userObj != null) {
+			"${userObj.mention} (`${userObj.tag}` / `${userObj.id}`)"
+		} else {
+			"${user.mention} (`${user.id}`)"
+		}
+	}
+}
+
 suspend fun EmbedBuilder.userField(user: UserBehavior, locale: Locale? = null, inline: Boolean = true) {
 	val userObj = user.asUserOrNull()
 

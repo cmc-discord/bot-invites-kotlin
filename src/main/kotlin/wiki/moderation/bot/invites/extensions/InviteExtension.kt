@@ -30,6 +30,8 @@ import dev.kord.rest.builder.channel.thread.applyTag
 import dev.kord.rest.builder.message.actionRow
 import dev.kord.rest.builder.message.embed
 import dev.kordex.core.DISCORD_BLURPLE
+import dev.kordex.core.DISCORD_GREEN
+import dev.kordex.core.DISCORD_RED
 import dev.kordex.core.DiscordRelayedException
 import dev.kordex.core.checks.hasRole
 import dev.kordex.core.commands.application.slash.ephemeralSubCommand
@@ -133,6 +135,7 @@ class InviteExtension : Extension() {
 									"server" to GUILD_ID,
 									"forum_channel" to APPLICATION_FORUM_ID,
 									"info_channel" to INFO_CHANNEL_ID,
+									"log_channel" to LOGGING_CHANNEL_ID,
 									"staff_role" to STAFF_ROLE_ID,
 									"verified_role" to VERIFIED_ROLE_ID,
 									"accepted_tag" to ACCEPTED_TAG_ID,
@@ -165,6 +168,19 @@ class InviteExtension : Extension() {
 					userEntity.codesRemaining += arguments.codes
 
 					userEntity.save()
+
+					logMessage {
+						// TODO: Translate later, I'm tired
+
+						title = "Codes Given"
+						color = DISCORD_GREEN
+
+						description = "A staff member has given ${arguments.codes} invitation codes to a user, " +
+							"leaving them with ${userEntity.codesRemaining} in total."
+
+						staffField(user)
+						userField(arguments.target)
+					}
 
 					dmChannel?.createMessage {
 						content = Translations.Messages.Code.granted
@@ -218,6 +234,19 @@ class InviteExtension : Extension() {
 					}
 
 					userEntity.save()
+
+					logMessage {
+						// TODO: Translate later, I'm tired
+
+						title = "Codes Taken"
+						color = DISCORD_RED
+
+						description = "A staff member has taken ${arguments.codes} invitation from to a user, " +
+							"leaving them with ${userEntity.codesRemaining} in total."
+
+						staffField(user)
+						userField(arguments.target)
+					}
 
 					dmChannel?.createMessage {
 						content = Translations.Messages.Code.taken
