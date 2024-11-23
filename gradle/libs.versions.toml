@@ -1,7 +1,7 @@
 [versions]
 detekt = "1.23.7"  # Note: Plugin versions must be updated in the settings.gradle.kts too
 
-exposed = "0.53.0"
+exposed = "0.56.0"
 flyway = "10.17.1"
 groovy = "3.0.22"
 hikari = "5.1.0"
