@@ -15,7 +15,10 @@ services:
       - "DB_URL=postgresql://cmc-invites-bot-postgres:5432/cmc-data"
 
       - TOKEN
-     # - SENTRY_DSN (For production deployments)
+      - SENTRY_DSN
+
+    volumes:
+      - cmc-invites-bot-data:/bot/data
 
   cmc-invites-bot-postgres:
     image: postgres:17
@@ -30,17 +33,3 @@ services:
 
     volumes:
       - cmc-invites-bot-postgres:/var/lib/postgresql/data
-
-
-  cmc-invites-bot-mongodb:
-    image: mongo:8
-    container_name: cmc-invites-bot-mongodb
-
-    restart: always
-
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: "${DB_USERNAME}"
-      MONGO_INITDB_ROOT_PASSWORD: "${DB_PASSWORD}"
-
-    volumes:
-      - cmc-invites-bot-mongodb:/data/mongodb
