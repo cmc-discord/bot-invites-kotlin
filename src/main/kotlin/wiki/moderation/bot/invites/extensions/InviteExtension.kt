@@ -46,6 +46,7 @@ import dev.kordex.core.i18n.types.Key
 import dev.kordex.core.i18n.withContext
 import dev.kordex.core.time.TimestampType
 import dev.kordex.core.time.toDiscord
+import dev.kordex.core.utils.deleteIgnoringNotFound
 import dev.kordex.core.utils.getJumpUrl
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.firstOrNull
@@ -255,7 +256,7 @@ class InviteExtension : Extension() {
 						)
 					}
 
-					channel.messages.collect { message -> message.delete() }
+					channel.messages.collect { message -> message.deleteIgnoringNotFound() }
 
 					Resources.Text.getVerifiedChannelText()
 						.forEach { block -> channel.createMessage(block) }
